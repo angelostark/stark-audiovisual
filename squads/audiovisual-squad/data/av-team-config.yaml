@@ -1,0 +1,93 @@
+# Configuração do Time Audiovisual — Stark
+# Fonte: análise da lista "Agenda de Postagem 3.0" no ClickUp
+# Atualizado em: 2026-03-24
+
+clickup:
+  list_id: "901324888130"
+  list_name: "Agenda de Postagem 3.0"
+  folder_id: "90070568439"
+  space_id: "61063156"
+
+status_flow:
+  - name: "a ser feito"
+    order: 1
+    type: pending
+  - name: "edição"
+    order: 2
+    type: in_progress
+  - name: "edição concluída"
+    order: 3
+    type: in_review
+  - name: "revisão"
+    order: 4
+    type: in_review
+  - name: "concluído"
+    order: 5
+    type: done
+
+team:
+  designers:
+    - id: "84856123"
+      name: "Eloy Lopes"
+      role: designer
+    - id: "82154730"
+      name: "Humberto Sales"
+      role: designer
+    - id: "112104837"
+      name: "Max Ayalla Miranda Araujo"
+      role: designer
+    - id: "106172497"
+      name: "Milena Araújo"
+      role: designer
+    - id: "248549658"
+      name: "Mateus Deckmann Redmann"
+      role: designer
+
+  editors:
+    - id: "188585120"
+      name: "Ebertty Matnai"
+      role: editor_video
+    - id: "112104835"
+      name: "João Andare"
+      role: editor_video
+    - id: "82029622"
+      name: "André Araújo"
+      role: editor_video
+
+  coordinators:
+    - id: "99919081"
+      name: "Matheus Peleteiro"
+      role: estrategista
+    - id: "99919079"
+      name: "Bruna Santana"
+      role: estrategista
+    - id: "87904153"
+      name: "Thaynara Castro"
+      role: estrategista
+    - id: "84008350"
+      name: "Evany Bandeira"
+      role: estrategista
+    - id: "87904152"
+      name: "Daniela Cabral"
+      role: estrategista
+    - id: "99984699"
+      name: "Germana Souza"
+      role: estrategista
+    - id: "82149537"
+      name: "Gabriella Andrade"
+      role: estrategista
+
+content_types:
+  - Carrossel
+  - Reels
+  - Estático
+  - Reels 3D
+  - Reels Cliente
+  - Capa
+  - Post Estático
+
+# Deadline padrão: quarta-feira 20h
+delivery_deadline:
+  day_of_week: wednesday
+  hour: 20
+  timezone: "America/Sao_Paulo"
