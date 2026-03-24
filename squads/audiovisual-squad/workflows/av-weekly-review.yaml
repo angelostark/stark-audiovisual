@@ -1,0 +1,119 @@
+name: av-weekly-review
+version: 1.0.0
+description: |
+  Workflow semanal completo de revisão da área audiovisual.
+  Executar toda segunda-feira para ter visibilidade da semana.
+agent: av-monitor
+trigger: manual  # Pode ser agendado via /schedule
+
+phases:
+  - id: phase-1
+    name: "Coleta de Dados"
+    description: "Buscar todos os dados atuais do ClickUp"
+    steps:
+      - id: 1.1
+        name: "Status Geral"
+        task: av-status-semanal.md
+        auto: true
+        output: status_report
+
+      - id: 1.2
+        name: "Identificar Atrasados"
+        task: av-atrasados.md
+        auto: true
+        output: atrasados_report
+        depends_on: [1.1]
+
+  - id: phase-2
+    name: "Análise por Membro"
+    description: "Scorecard individual de cada membro da equipe"
+    steps:
+      - id: 2.1
+        name: "Scorecard Designers"
+        action: |
+          Executar *por-membro para cada designer:
+          - Eloy Lopes
+          - Humberto Sales
+          - Max Ayalla
+          - Milena Araújo
+          - Mateus Deckmann
+        auto: true
+        output: designers_scorecard
+        depends_on: [1.1]
+
+      - id: 2.2
+        name: "Scorecard Editores"
+        action: |
+          Executar *por-membro para cada editor:
+          - Ebertty Matnai
+          - João Andare
+          - André Araújo
+        auto: true
+        output: editors_scorecard
+        depends_on: [1.1]
+
+  - id: phase-3
+    name: "Análise por Cliente"
+    description: "Status de produção dos principais clientes com atraso"
+    steps:
+      - id: 3.1
+        name: "Clientes em Risco"
+        action: |
+          Para cada cliente identificado como atrasado em phase-1,
+          executar *por-cliente e resumir situação.
+        auto: true
+        output: clientes_risco_report
+        depends_on: [1.2]
+
+  - id: phase-4
+    name: "Geração do Relatório"
+    description: "Consolidar tudo e gerar relatório para liderança"
+    steps:
+      - id: 4.1
+        name: "Consolidar Dados"
+        action: |
+          Unir outputs de phase-1, phase-2 e phase-3
+          no template relatorio-av-tmpl.md
+        auto: true
+        depends_on: [2.1, 2.2, 3.1]
+
+      - id: 4.2
+        name: "Gerar PDF via Gamma"
+        task: av-gerar-relatorio.md
+        auto: true
+        output: relatorio_final
+        depends_on: [4.1]
+
+      - id: 4.3
+        name: "Apresentar ao Líder"
+        action: |
+          Exibir resumo executivo no chat:
+          - Top 3 riscos da semana
+          - Membros com mais atraso
+          - Clientes críticos
+          - Link do relatório PDF
+        auto: true
+        elicit: false
+        depends_on: [4.2]
+
+output:
+  - status_report: "Visão geral de todas as entregas"
+  - atrasados_report: "Lista de atrasados com responsáveis"
+  - designers_scorecard: "Performance individual de designers"
+  - editors_scorecard: "Performance individual de editores"
+  - clientes_risco_report: "Clientes com produção em risco"
+  - relatorio_final: "Link do PDF no Gamma"
+
+on_error:
+  clickup_unavailable:
+    action: "Pausar workflow e notificar: ClickUp MCP indisponível"
+    retry: false
+  gamma_unavailable:
+    action: "Gerar relatório em markdown e continuar sem PDF"
+    retry: false
+
+estimated_duration: "5-10 minutos"
+
+usage:
+  - "@av-monitor *workflow av-weekly-review"
+  - "/av-relatorio (executa fase 4 isolada)"

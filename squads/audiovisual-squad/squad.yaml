@@ -1,0 +1,54 @@
+name: audiovisual-squad
+version: 1.0.0
+description: Squad para liderança e monitoramento da área Audiovisual da Stark — análise de entregas, status de equipe e relatórios de performance.
+author: Anderson Luiz
+license: MIT
+slashPrefix: av
+
+aiox:
+  minVersion: "2.1.0"
+  type: squad
+
+components:
+  agents:
+    - av-monitor.md
+  tasks:
+    - av-status-semanal.md
+    - av-atrasados.md
+    - av-por-membro.md
+    - av-por-cliente.md
+    - av-gerar-relatorio.md
+  workflows:
+    - av-weekly-review.yaml
+  checklists:
+    - av-monitor-quality-gate.md
+  templates:
+    - relatorio-av-tmpl.md
+  tools: []
+  scripts: []
+
+config:
+  extends: extend
+
+integrations:
+  clickup:
+    list_id: "901324888130"
+    list_name: "Agenda de Postagem 3.0"
+    folder_id: "90070568439"
+    folder_name: "Comunicação"
+    space_id: "61063156"
+    space_name: "Agência [Operacional]"
+  gamma:
+    use_for: "Geração de relatórios PDF"
+
+dependencies:
+  node: []
+  python: []
+  squads: []
+
+tags:
+  - audiovisual
+  - monitoring
+  - stark
+  - clickup
+  - leadership
