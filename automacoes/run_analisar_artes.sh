@@ -17,6 +17,8 @@ JSON_FILE="/tmp/analise_artes_result_${TIMESTAMP}.json"
 
 # PATH com locais comuns do Claude CLI e Python
 export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+# Garantir que Claude CLI nao detecte sessao aninhada (necessario se rodando de dentro do Claude Code)
+unset CLAUDECODE
 cd "$PROJECT_DIR"
 mkdir -p "$LOG_DIR"
 

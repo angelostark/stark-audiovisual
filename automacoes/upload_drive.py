@@ -97,7 +97,8 @@ def find_shared_drive(service, name):
 
 def find_folder(service, name, parent_id, drive_id=None):
     """Busca uma pasta pelo nome dentro de um parent. Suporta Shared Drives."""
-    query = f"name = '{name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+    safe_name = name.replace("'", "\\'")
+    query = f"name = '{safe_name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
     query += f" and '{parent_id}' in parents"
 
     kwargs = {
@@ -119,7 +120,8 @@ def find_folder(service, name, parent_id, drive_id=None):
 def find_folder_contains(service, search_text, parent_id, drive_id=None):
     """Busca uma pasta cujo nome CONTEM o texto (busca parcial). Suporta Shared Drives.
     Util para pastas com prefixo/sufixo como '03. Cronograma de Conteúdo | Oi'."""
-    query = f"name contains '{search_text}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+    safe_text = search_text.replace("'", "\\'")
+    query = f"name contains '{safe_text}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
     query += f" and '{parent_id}' in parents"
 
     kwargs = {
