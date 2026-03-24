@@ -177,19 +177,69 @@ LOOP:
       CONTINUAR LOOP
 ```
 
-### Step 4: Classificar tarefas por membro
+### Step 4: Contar tarefas por membro (consulta individual — DADOS EXATOS)
 
-Para cada membro em `data/av-team-config.yaml` (designers + editores + coordenadores):
+**CRITICO: NAO contar manualmente a partir da paginacao geral.**
+Usar o filtro `assignees` do ClickUp para obter contagem EXATA por membro.
+
+Para cada membro em `data/av-team-config.yaml` (designers + editores):
 
 ```
+membros = [
+  {id: "84856123",  nome: "Eloy Lopes"},
+  {id: "82154730",  nome: "Humberto Sales"},
+  {id: "112104837", nome: "Max Ayalla"},
+  {id: "106172497", nome: "Milena Araujo"},
+  {id: "248549658", nome: "Mateus Deckmann"},
+  {id: "188585120", nome: "Ebertty Matnai"},
+  {id: "112104835", nome: "Joao Andare"},
+  {id: "82029622",  nome: "Andre Araujo"}
+]
+
 Para cada membro:
-  tarefas_do_membro = filtrar todas_tarefas onde assignees contem membro.id
-  concluidas_no_prazo = filtrar tarefas_concluidas onde assignees contem membro.id
+  resultado = clickup_filter_tasks({
+    list_ids: ["901324888130"],
+    assignees: [membro.id],
+    subtasks: true,
+    include_closed: true,
+    order_by: "due_date",
+    due_date_from: "{segunda_inicio}",
+    due_date_to: "{quarta_limite}",
+    page: 0
+  })
 
-  membro.total_semana = count(tarefas_do_membro)
-  membro.concluidas_prazo = count(concluidas_no_prazo)
-  membro.pct_entrega = (concluidas_prazo / total_semana) * 100  // 0 se total = 0
+  // Aplicar mesmo mecanismo de retry em caso de erro
+
+  membro.total = resultado.count  // ESTE E O NUMERO EXATO DO CLICKUP
+
+  // Contar status a partir das tarefas retornadas
+  membro.concluidas = count(tarefas onde status in ["edicao concluida", "concluido"])
+  membro.em_edicao = count(tarefas onde status = "edicao")
+  membro.a_fazer = count(tarefas onde status = "a ser feito")
+  membro.outros = membro.total - membro.concluidas - membro.em_edicao - membro.a_fazer
+
+  membro.pct_entrega = (membro.concluidas / membro.total) * 100  // 0 se total = 0
+
+  // SE resultado.count == 100: paginar para obter TODAS as tarefas do membro
+  SE resultado.count == 100:
+    pagina = 1
+    LOOP:
+      resultado_extra = clickup_filter_tasks({
+        ...mesmos params...,
+        page: pagina
+      })
+      acumular tarefas e recontar status
+      SE resultado_extra.count < 100: BREAK
+      pagina = pagina + 1
 ```
+
+**POR QUE consulta individual?**
+- O filtro `assignees` do ClickUp retorna o `count` exato
+- Contar manualmente em 700+ tarefas paginadas gera erro de ~5-10%
+- Uma consulta por membro (8 consultas) e mais preciso que contar em 8 paginas
+
+**VALIDACAO:** O total por membro DEVE bater com o numero mostrado no ClickUp.
+Se nao bater, investigar se ha tarefas com due_date fora do range ou subtasks nao incluidas.
 
 **Status das tarefas para classificacao:**
 - **ENTREGUE NO PRAZO**: status in ["edicao concluida", "concluido"] E date_done <= quarta 20h
@@ -198,18 +248,27 @@ Para cada membro:
 - **NAO INICIADO**: status = "a ser feito"
 - **SEM RESPONSAVEL**: assignees = []
 
+**PARALELISMO:** As 8 consultas por membro sao independentes — podem ser executadas em paralelo para maior velocidade.
+
 ### Step 5: Calcular metricas gerais
 
 ```
-total_tarefas_semana = count(todas_tarefas)
-total_concluidas_prazo = count(tarefas_concluidas com status done E date_done <= quarta 20h)
-total_concluidas_atrasado = count(tarefas done E date_done > quarta 20h)
-total_em_andamento = count(status = edicao | revisao)
-total_nao_iniciado = count(status = a ser feito)
-total_sem_responsavel = count(assignees = [])
+// Somar os totais exatos dos 8 membros (Step 4)
+total_tarefas_membros = soma(membro.total para cada membro)
+total_concluidas = soma(membro.concluidas para cada membro)
+total_em_edicao = soma(membro.em_edicao para cada membro)
+total_a_fazer = soma(membro.a_fazer para cada membro)
+total_outros = soma(membro.outros para cada membro)
 
-pct_entrega_geral = (total_concluidas_prazo / total_tarefas_semana) * 100
+// Tarefas sem responsavel vem do Step 2 (paginacao geral)
+total_sem_responsavel = count(tarefas em todas_tarefas onde assignees = [])
+
+// Taxa geral
+pct_entrega_geral = (total_concluidas / total_tarefas_membros) * 100
 ```
+
+**NOTA:** O total geral da paginacao (Step 2) inclui tarefas de coordenadores e outros membros
+nao listados nos 8 membros principais. O total por membro e a fonte de verdade para o relatorio.
 
 ### Step 6: Montar e exibir output
 
@@ -290,6 +349,8 @@ Usar template de output abaixo.
 - [ ] Registrou total de paginas, tarefas coletadas e retries ocorridos
 - [ ] Se dados parciais: sinalizou claramente no output com aviso "DADOS PARCIAIS"
 - [ ] Filtrou tarefas concluidas dentro do prazo (date_done <= quarta 20h)
-- [ ] Calculou % de entrega por membro (designers + editores + coordenadores)
+- [ ] Consulta INDIVIDUAL por membro via filtro `assignees` (8 consultas, contagem exata)
+- [ ] Total por membro BATE com o ClickUp (count do resultado = numero real)
+- [ ] Calculou % de entrega por membro (designers + editores)
 - [ ] Identificou tarefas sem responsavel
 - [ ] Exibiu tabela completa com todos os membros do time
