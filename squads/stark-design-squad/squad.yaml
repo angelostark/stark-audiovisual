@@ -1,0 +1,164 @@
+name: stark-design-squad
+version: 1.0.0
+description: >
+  Squad de agentes de IA especializados em produção, revisão e entrega
+  de conteúdo visual para clientes de marketing digital da Stark Mkt.
+  Coordena design no Figma, landing pages (Atomic Design), capas de reels,
+  QA de qualidade, gestão de marca, referências visuais e analytics.
+author: "Angelo Gabriel <angelo@starkmkt.com>"
+license: MIT
+domain: design-production-qa
+slashPrefix: stark-design
+
+aiox:
+  minVersion: "2.1.0"
+  type: squad
+
+components:
+  agents:
+    - orquestrador.md
+    - designer-figma.md
+    - web-designer-lp.md
+    - construtor-capa-reels.md
+    - qa-qualidade.md
+    - brand-guardian.md
+    - pesquisador-ref.md
+    - analytics-posts.md
+    - monitor-refacoes.md
+    - solucionador.md
+
+  tasks:
+    # Orquestrador
+    - delegar-tarefa.md
+    - consolidar-entrega.md
+    - exportar-entrega.md
+    - alertar-atraso.md
+    - status-squad.md
+    - buscar-layout.md
+    - registrar-feedback-layout.md
+    # Designer Figma
+    - criar-layout.md
+    - replicar-layout.md
+    - exportar-assets.md
+    - exportar-entrega-designer.md
+    - gerar-imagem.md
+    - setup-tokens-figma.md
+    - indexar-layout.md
+    # Web Designer LP
+    - criar-lp.md
+    - replicar-lp.md
+    - criar-componente.md
+    - listar-atomos.md
+    - compor-organismo.md
+    - extrair-assets-figma.md
+    - figma-to-html.md
+    # Construtor Capa Reels
+    - criar-capa.md
+    - criar-variacao-ab.md
+    # QA de Qualidade
+    - avaliar-entrega.md
+    - gerar-laudo.md
+    - atualizar-ranking.md
+    # Brand Guardian
+    - consultar-marca.md
+    - historico-fotos.md
+    - paleta-cliente.md
+    - registrar-uso.md
+    # Pesquisador Ref
+    - buscar-referencias.md
+    - tendencias-nicho.md
+    - gerar-moodboard.md
+    - extrair-briefing-clickup.md
+    # Analytics Posts
+    - desempenho-post.md
+    - media-cliente.md
+    - ranking-mensal.md
+    # Monitor Refações
+    - refacoes-semana.md
+    - refacoes-por-cliente.md
+    - refacoes-por-designer.md
+    - plano-acao.md
+    # Solucionador
+    - diagnosticar-erro.md
+    - executar-fallback.md
+    - alertar-erro-clickup.md
+    - registrar-erro.md
+
+  workflows:
+    - post-creation-flow.yaml
+
+  templates:
+    - laudo-qa-tmpl.md
+    - plano-acao-tmpl.md
+    - alerta-erro-tmpl.md
+
+  checklists: []
+  tools: []
+  scripts: []
+
+config:
+  extends: extend
+  coding-standards: config/coding-standards.md
+  tech-stack: config/tech-stack.md
+  source-tree: config/source-tree.md
+
+dependencies:
+  python:
+    - google-api-python-client
+    - google-auth
+    - Pillow
+  squads: []
+  external_skills:
+    - name: UI-UX-Pro-Max
+      install: "npx skills add nextlevelbuilder/ui-ux-pro-max-skill@ui-ux-pro-max"
+    - name: frontend-design
+      install: "npx skills add anthropics/skills@frontend-design"
+    - name: shadcn-ui
+      install: "npx skills add giuseppe-trisciuoglio/developer-kit@shadcn-ui"
+    - name: web-accessibility
+      install: "npx skills add supercent-io/skills-template@web-accessibility"
+    - name: web-design-guidelines
+      install: "npx skills add vercel-labs/agent-skills@web-design-guidelines"
+
+integrations:
+  - name: Figma
+    type: MCP
+    required: true
+  - name: ClickUp
+    type: MCP
+    required: true
+  - name: Google Drive
+    type: Script
+    script: automacoes/upload_drive.py
+    required: true
+  - name: Google Sheets
+    type: Script
+    required: false
+  - name: Web Search
+    type: Native
+    required: false
+  - name: Nanobanana
+    type: MCP
+    description: "Geração e edição de imagens via Gemini 2.5 Flash"
+    required: false
+  - name: Apify
+    type: MCP (Docker Gateway)
+    description: "Instagram scraping via Apify Actors (post/profile scraper)"
+    required: false
+    used_by: [pesquisador-ref]
+
+reused_skills:
+  - name: figma-export-para-drive
+    path: ".claude/commands/figma-export-para-drive.md"
+    used_by: [orquestrador, designer-figma]
+
+tags:
+  - design
+  - qa
+  - figma
+  - marketing
+  - stark
+  - audiovisual
+  - atomic-design
+
+blueprint: "../.designs/stark-design-squad-design.yaml"

@@ -39,16 +39,19 @@ team:
     - id: "106172497"
       name: "Milena Araújo"
       role: designer
-    - id: "248549658"
-      name: "Mateus Deckmann Redmann"
+    - id: "112104835"
+      name: "João Andare"
+      role: designer
+    - id: "106090854"
+      name: "Karyne Torres"
       role: designer
 
   editors:
     - id: "188585120"
       name: "Ebertty Matnai"
       role: editor_video
-    - id: "112104835"
-      name: "João Andare"
+    - id: "248549658"
+      name: "Mateus Deckmann Redmann"
       role: editor_video
     - id: "82029622"
       name: "André Araújo"

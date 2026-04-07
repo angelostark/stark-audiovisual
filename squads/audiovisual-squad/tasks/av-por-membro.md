@@ -22,8 +22,8 @@ Se `membro` não for fornecido, perguntar:
 ```
 Qual membro da equipe você quer analisar?
 
-Designers: Eloy Lopes, Humberto Sales, Max Ayalla, Milena Araújo, Mateus Deckmann
-Editores: Ebertty Matnai, João Andare, André Araújo
+Designers: Eloy Lopes, Humberto Sales, Max Ayalla, Milena Araújo, João Andare, Karyne Torres
+Editores: Ebertty Matnai, Mateus Deckmann Redmann, André Araújo
 Estrategistas: Matheus Peleteiro, Bruna Santana, Thaynara Castro, Evany Bandeira, Daniela Cabral, Germana Souza
 
 Digite o nome (ou parte dele):

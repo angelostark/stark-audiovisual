@@ -23,7 +23,10 @@ import os
 import re
 import argparse
 import unicodedata
+import requests
+import time as _time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from google.oauth2.service_account import Credentials
 
 # =====================================================================
@@ -69,6 +72,24 @@ MESES_PT = [
 
 # E-mail para notificação (opcional)
 EMAIL_NOTIFICACAO = 'angelo@starkmkt.com'
+
+# ClickUp Chat API
+CLICKUP_API_BASE = 'https://api.clickup.com/api/v3'
+CLICKUP_WORKSPACE_ID = '36998608'
+
+# Channel IDs para DMs do ClickUp Chat
+CHAT_CHANNELS = {
+    'Angelo':   '1393eg-26353',
+    'Ebertty':  '1393eg-61153',
+    'Humberto': '1393eg-33113',
+    'Eloy':     '1393eg-61573',
+    'André':    '1393eg-26473',
+    'Max':      '1393eg-61713',
+    'Karyne':   '1393eg-61733',
+    'Milena':   '1393eg-61753',
+    'João':     '1393eg-61773',
+    'Mateus':   '1393eg-61793',
+}
 
 
 # =====================================================================
@@ -864,6 +885,225 @@ def imprimir_resumo(dados_layouts, dados_entregas, dados_alteracoes, dados_video
 
 
 # =====================================================================
+# CLICKUP CHAT — ENVIO DE DMs
+# =====================================================================
+
+def obter_saudacao():
+    """Retorna saudação baseada no horário de Salvador/BA."""
+    hora = datetime.now(ZoneInfo('America/Bahia')).hour
+    if hora < 12:
+        return 'Bom dia'
+    elif hora < 18:
+        return 'Boa tarde'
+    return 'Boa noite'
+
+
+def obter_clickup_token():
+    """Lê CLICKUP_API_KEY do ambiente. Retorna None se ausente."""
+    token = os.environ.get('CLICKUP_API_KEY', '').strip()
+    return token if token else None
+
+
+def enviar_mensagem_clickup(token, channel_id, conteudo):
+    """
+    Envia mensagem via ClickUp Chat API v3.
+    Retorna (True, None) em sucesso ou (False, erro_str) em falha.
+    Faz 1 retry com 2s de delay.
+    """
+    url = f'{CLICKUP_API_BASE}/workspaces/{CLICKUP_WORKSPACE_ID}/chat/channels/{channel_id}/messages'
+    headers = {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+    }
+    payload = {'content': conteudo}
+
+    for tentativa in range(2):
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=15)
+            if resp.status_code in (200, 201):
+                return True, None
+            erro = f'HTTP {resp.status_code}: {resp.text[:200]}'
+        except requests.RequestException as e:
+            erro = str(e)
+
+        if tentativa == 0:
+            _time.sleep(2)
+
+    return False, erro
+
+
+def montar_dm_individual(nome, mes, ano, dados_alteracoes, dados_layouts, dados_videos, dados_entregas):
+    """Monta mensagem individual com metas do colaborador."""
+    saudacao = obter_saudacao()
+    eh_editor = nome in ['André', 'Ebertty', 'Mateus']
+
+    alt = dados_alteracoes.get(nome, 0.0)
+    prazo = dados_entregas.get(nome, 0.0)
+
+    if eh_editor:
+        modelo_valor = dados_videos.get(nome)
+        modelo_label = 'Novos Modelos de Vídeo'
+    else:
+        modelo_valor = dados_layouts.get(nome)
+        modelo_label = 'Novos Modelos de Layout'
+
+    modelo_str = f'{modelo_valor * 100:.0f}%' if modelo_valor is not None else 'N/A'
+
+    # Nota fiscal: atingiu meta se alt >= 0.75 E prazo >= 0.80 E modelo == 1.0
+    alt_ok = alt >= 0.75
+    prazo_ok = prazo >= 0.80
+    modelo_ok = modelo_valor is not None and modelo_valor >= 1.0
+    nf_status = 'Liberada' if (alt_ok and prazo_ok and modelo_ok) else 'Pendente — verifique KPIs abaixo'
+
+    msg = f"""{saudacao}, {nome}! 👋
+
+Seguem suas **metas de {mes} {ano}** — Time Audiovisual Stark:
+
+📊 **Seus KPIs do mês:**
+• Alterações por Responsabilidade: **{alt * 100:.1f}%** {'✅' if alt_ok else '⚠️'}
+• {modelo_label}: **{modelo_str}** {'✅' if modelo_ok else '⚠️'}
+• Prazo de Entrega de Demandas: **{prazo * 100:.1f}%** {'✅' if prazo_ok else '⚠️'}
+
+📝 **Nota Fiscal:** {nf_status}
+
+Qualquer dúvida, me chama! 💬"""
+
+    return msg
+
+
+def montar_relatorio_sucesso(mes, ano, dados_alteracoes, dados_layouts, dados_videos, dados_entregas, dms_enviadas, dms_falhas, tempo_execucao):
+    """Monta relatório completo para o Angelo."""
+    saudacao = obter_saudacao()
+    designers = [n for n in NOMES if n not in ['André', 'Ebertty', 'Mateus']]
+    editores = ['André', 'Ebertty', 'Mateus']
+
+    # Destaques
+    melhor_alt = max(dados_alteracoes.items(), key=lambda x: x[1])
+    melhor_prazo = max(dados_entregas.items(), key=lambda x: x[1])
+
+    linhas_designers = []
+    for nome in designers:
+        alt = dados_alteracoes.get(nome, 0.0)
+        layout = dados_layouts.get(nome)
+        prazo = dados_entregas.get(nome, 0.0)
+        layout_str = f'{layout * 100:.0f}%' if layout is not None else 'N/A'
+        linhas_designers.append(f'  • {nome}: Alt {alt * 100:.1f}% | Layout {layout_str} | Prazo {prazo * 100:.1f}%')
+
+    linhas_editores = []
+    for nome in editores:
+        alt = dados_alteracoes.get(nome, 0.0)
+        video = dados_videos.get(nome)
+        prazo = dados_entregas.get(nome, 0.0)
+        video_str = f'{video * 100:.0f}%' if video is not None else 'N/A'
+        linhas_editores.append(f'  • {nome}: Alt {alt * 100:.1f}% | Vídeo {video_str} | Prazo {prazo * 100:.1f}%')
+
+    falhas_str = ''
+    if dms_falhas:
+        falhas_str = '\n⚠️ **DMs com falha:**\n' + '\n'.join(f'  • {nome}: {erro}' for nome, erro in dms_falhas)
+
+    msg = f"""{saudacao}, Angelo! 📊
+
+**Relatório de Metas — {mes} {ano}**
+
+✅ Planilha atualizada com sucesso
+📨 DMs enviadas: {dms_enviadas}/{dms_enviadas + len(dms_falhas)}
+⏱️ Tempo total: {tempo_execucao:.1f}s
+
+**Designers:**
+{chr(10).join(linhas_designers)}
+
+**Editores:**
+{chr(10).join(linhas_editores)}
+
+🏆 **Destaques:**
+• Melhor Alterações: {melhor_alt[0]} ({melhor_alt[1] * 100:.1f}%)
+• Melhor Prazo: {melhor_prazo[0]} ({melhor_prazo[1] * 100:.1f}%){falhas_str}"""
+
+    return msg
+
+
+def montar_relatorio_erro(mes, ano, etapa_falha, erro_msg, tempo_execucao):
+    """Monta relatório de erro para o Angelo."""
+    saudacao = obter_saudacao()
+
+    msg = f"""{saudacao}, Angelo! ⚠️
+
+**Relatório de Metas — {mes} {ano}**
+
+❌ **Falha na etapa:** {etapa_falha}
+📝 **Erro:** {erro_msg}
+⏱️ Tempo até falha: {tempo_execucao:.1f}s
+
+**Ação necessária:** Verifique os logs e rode manualmente:
+```
+python3 automacoes/metas_av.py --mes {MESES_PT.index(mes) + 1} --ano {ano}
+```"""
+
+    return msg
+
+
+def enviar_dms_metas(token, mes, ano, dados_alteracoes, dados_layouts, dados_videos, dados_entregas, tempo_execucao, dry_run=False, planilha_ok=True):
+    """
+    Orquestradora: envia DMs individuais + relatório para Angelo.
+    Retorna (dms_enviadas, dms_falhas).
+    """
+    if not token:
+        print('\n⚠️ CLICKUP_API_KEY não configurada — pulando envio de DMs.')
+        return 0, []
+
+    print('\n📨 ENVIANDO DMs VIA CLICKUP CHAT')
+    print('─' * 40)
+
+    dms_enviadas = 0
+    dms_falhas = []
+
+    # Enviar DMs individuais (todos exceto Angelo)
+    for nome, channel_id in CHAT_CHANNELS.items():
+        if nome == 'Angelo':
+            continue
+
+        msg = montar_dm_individual(nome, mes, ano, dados_alteracoes, dados_layouts, dados_videos, dados_entregas)
+
+        if dry_run:
+            print(f'  🔍 DRY RUN — {nome}: mensagem montada ({len(msg)} chars)')
+            dms_enviadas += 1
+            continue
+
+        ok, erro = enviar_mensagem_clickup(token, channel_id, msg)
+        if ok:
+            print(f'  ✅ {nome}: DM enviada')
+            dms_enviadas += 1
+        else:
+            print(f'  ❌ {nome}: falha — {erro}')
+            dms_falhas.append((nome, erro))
+
+        _time.sleep(0.5)  # Rate limit
+
+    # Relatório para Angelo
+    if planilha_ok:
+        relatorio = montar_relatorio_sucesso(
+            mes, ano, dados_alteracoes, dados_layouts, dados_videos, dados_entregas,
+            dms_enviadas, dms_falhas, tempo_execucao
+        )
+    else:
+        relatorio = montar_relatorio_erro(mes, ano, 'Escrita na planilha', 'Falha ao atualizar planilha', tempo_execucao)
+
+    angelo_channel = CHAT_CHANNELS.get('Angelo')
+    if angelo_channel:
+        if dry_run:
+            print(f'  🔍 DRY RUN — Angelo (relatório): mensagem montada ({len(relatorio)} chars)')
+        else:
+            ok, erro = enviar_mensagem_clickup(token, angelo_channel, relatorio)
+            if ok:
+                print(f'  ✅ Angelo: relatório enviado')
+            else:
+                print(f'  ❌ Angelo: falha no relatório — {erro}')
+
+    print(f'\n  Resumo DMs: {dms_enviadas} enviadas, {len(dms_falhas)} falhas')
+    return dms_enviadas, dms_falhas
+
+
+# =====================================================================
 # MAIN
 # =====================================================================
 
@@ -874,8 +1114,11 @@ def main():
     parser.add_argument('--mes-anterior', action='store_true',
                         help='Processa o mês anterior ao atual (ex: roda em abril → processa março)')
     parser.add_argument('--dry-run', action='store_true', help='Só calcula, não escreve')
+    parser.add_argument('--skip-chat', action='store_true',
+                        help='Pula envio de DMs no ClickUp Chat (só grava planilha)')
     args = parser.parse_args()
 
+    inicio = _time.time()
     hoje = datetime.now()
 
     if args.mes_anterior:
@@ -896,8 +1139,15 @@ def main():
     print(f'🎯 AUTOMAÇÃO DE METAS — {mes.upper()} {ano}')
     print('=' * 50)
 
-    # Autenticar
+    # Autenticar Google
     client = autenticar()
+
+    # Obter token ClickUp (para DMs depois)
+    clickup_token = obter_clickup_token()
+    if clickup_token:
+        print('✅ ClickUp API token encontrado')
+    elif not args.skip_chat:
+        print('⚠️ CLICKUP_API_KEY não configurada — DMs serão puladas')
 
     # Processar fontes
     dados_layouts = processar_layouts(client, mes, ano)
@@ -910,17 +1160,40 @@ def main():
     # Resumo
     imprimir_resumo(dados_layouts, dados_entregas, dados_alteracoes, dados_videos)
 
-    # Escrever
+    # Escrever na planilha
+    planilha_ok = False
     if args.dry_run:
         escrever_metas(client, dados_layouts, dados_entregas, dados_alteracoes, dados_videos, mes, ano, dry_run=True)
         print('\n🔍 Modo DRY RUN — nada foi escrito na planilha.')
+        planilha_ok = True
     else:
-        sucesso = escrever_metas(client, dados_layouts, dados_entregas, dados_alteracoes, dados_videos, mes, ano)
-        if sucesso:
+        planilha_ok = escrever_metas(client, dados_layouts, dados_entregas, dados_alteracoes, dados_videos, mes, ano)
+        if planilha_ok:
             print('\n✅ Metas atualizadas com sucesso!')
         else:
             print('\n❌ Falha ao atualizar metas.')
-            sys.exit(1)
+
+    # Enviar DMs via ClickUp Chat
+    tempo_execucao = _time.time() - inicio
+    if args.skip_chat:
+        print('\n⏭️ --skip-chat: envio de DMs pulado.')
+    elif args.dry_run:
+        enviar_dms_metas(
+            clickup_token, mes, ano,
+            dados_alteracoes, dados_layouts, dados_videos, dados_entregas,
+            tempo_execucao, dry_run=True, planilha_ok=planilha_ok,
+        )
+        print('\n🔍 Modo DRY RUN — nenhuma DM foi enviada.')
+    else:
+        enviar_dms_metas(
+            clickup_token, mes, ano,
+            dados_alteracoes, dados_layouts, dados_videos, dados_entregas,
+            tempo_execucao, planilha_ok=planilha_ok,
+        )
+
+    # Exit code: falha só se planilha falhou (DMs são best-effort)
+    if not planilha_ok and not args.dry_run:
+        sys.exit(1)
 
 
 if __name__ == '__main__':

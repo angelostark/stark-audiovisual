@@ -1,0 +1,44 @@
+briefing:
+  titulo: "Estático Antes/Depois — Dr George"
+  data_criacao: "2026-03-26"
+  data_publicacao: "2026-03-31"
+  status: pendente
+
+clickup:
+  subtask_id: "86agc5796"
+  subtask_nome: "31/03 (Terça) – Estático | Dr George"
+  subtask_status: "edição"
+  designer: "João Andare"
+  tarefa_mae_id: "86ag9gftp"
+  tarefa_mae_nome: "Semana 30/03 a 03/04 | Dr George"
+  responsavel_tarefa_mae: "Gabriella Andrade"
+
+conteudo:
+  tipo: estatico
+  subtipo: antes_depois
+  copy: "Ela precisou tomar uma decisão… antes: Para que essa transformação pudesse acontecer! depois:"
+  formato: "1080x1350"
+  plataforma: instagram_feed
+
+figma:
+  arquivo: "https://www.figma.com/design/Q0nyrKvy33TYl9pI6BEjkB/Dr.-George"
+  file_key: "Q0nyrKvy33TYl9pI6BEjkB"
+  identidade_visual: "extrair do Figma (sem YAML ainda)"
+
+naming:
+  padrao: "drgeorge-estatico-20260331-v1"
+  cliente_slug: "drgeorge"
+
+fluxo:
+  - step: 1
+    acao: "*setup-tokens no Figma do Dr George"
+    descricao: "Extrair cores, tipografia e identidade visual do arquivo Figma"
+  - step: 2
+    acao: "Criar estático antes/depois"
+    descricao: "Usar copy + identidade visual extraída para montar o layout 1080x1350"
+  - step: 3
+    acao: "QA → Exportar → Drive"
+    descricao: "Avaliar qualidade, exportar PNG, upload para Drive do cliente"
+  - step: 4
+    acao: "Comentar no ClickUp"
+    descricao: "Postar link do Drive na subtask 86agc5796 com @Gabriella Andrade"

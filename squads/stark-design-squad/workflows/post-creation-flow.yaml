@@ -1,0 +1,147 @@
+name: post-creation-flow
+description: >
+  Fluxo completo de criação de post — do pedido do gestor até a entrega
+  final no Drive com notificação no ClickUp.
+squad: stark-design-squad
+version: 1.0.0
+
+trigger:
+  type: manual
+  command: "*criar-post"
+  agent: orquestrador
+
+steps:
+  - id: receber-pedido
+    agent: orquestrador
+    task: delegar-tarefa
+    description: "Recebe pedido do gestor, interpreta e confirma cliente"
+    output: briefing_completo
+
+  - id: consultar-marca
+    agent: brand-guardian
+    task: consultar-marca
+    description: "Busca paleta, fontes, tom e fotos já usadas do cliente"
+    depends_on: [receber-pedido]
+    output: brand_guidelines
+
+  - id: buscar-referencias
+    agent: pesquisador-ref
+    task: buscar-referencias
+    description: "Busca referências visuais para o nicho do cliente"
+    depends_on: [receber-pedido]
+    optional: true
+    output: referencias
+
+  - id: executar-design
+    agent: designer-figma  # ou web-designer-lp ou construtor-capa-reels
+    task: criar-layout     # varia conforme tipo
+    description: "Agente executor cria o design no Figma"
+    depends_on: [consultar-marca, buscar-referencias]
+    input:
+      - briefing_completo
+      - brand_guidelines
+      - referencias
+    output: frame_figma
+
+  - id: avaliar-qa
+    agent: qa-qualidade
+    task: avaliar-entrega
+    description: "QA avalia a entrega com 5 critérios ponderados"
+    depends_on: [executar-design]
+    input: frame_figma
+    output: laudo_qa
+    decision:
+      approved: [exportar]        # nota >= 7
+      conditional: [ajustar]      # nota 5-6
+      rejected: [retrabalhar]     # nota < 5 ou >3 regras
+
+  - id: ajustar
+    agent: designer-figma
+    description: "Designer ajusta com base nas ressalvas do QA"
+    depends_on: [avaliar-qa]
+    input: laudo_qa
+    next: avaliar-qa  # loop até aprovação
+
+  - id: retrabalhar
+    agent: orquestrador
+    task: consolidar-entrega
+    description: "Orquestrador posta laudo completo no chat, @designer para retrabalho"
+    depends_on: [avaliar-qa]
+    actions:
+      - "Postar laudo no chat da subtarefa"
+      - "@mencionar designer responsável"
+    next: executar-design  # volta ao design
+
+  - id: exportar
+    agent: designer-figma
+    task: exportar-entrega-designer
+    description: "Exporta para Drive + comenta no ClickUp + notifica responsável"
+    depends_on: [avaliar-qa]
+    input: frame_figma
+    output: entrega_final
+
+  - id: indexar-layout
+    agent: designer-figma
+    task: indexar-layout
+    description: "Indexa o layout entregue no Layout Index (Google Sheets) para consulta futura"
+    depends_on: [exportar]
+    input:
+      - entrega_final
+      - laudo_qa
+    output: layout_indexado
+
+  - id: registrar-uso
+    agent: brand-guardian
+    task: registrar-uso
+    description: "Registra fotos/assets usados no histórico do cliente"
+    depends_on: [exportar]
+
+  - id: registrar-refacao
+    agent: monitor-refacoes
+    description: "Se houve refação, registra no histórico para análise"
+    depends_on: [exportar]
+    condition: "had_rework == true"
+
+  - id: consolidar
+    agent: orquestrador
+    task: consolidar-entrega
+    description: "Reporta resultado final ao gestor"
+    depends_on: [exportar, registrar-uso, indexar-layout]
+    output: relatorio_final
+
+error_handling:
+  agent: solucionador
+  on_qa_reject_max: 3  # máximo de iterações QA antes de escalar
+  escalation: "Notificar gestor (Ângelo) se post reprovar 3x seguidas"
+
+  on_error:
+    description: >
+      Qualquer erro em qualquer step é interceptado pelo Solucionador.
+      Ele classifica, tenta fallback automático, ou escala para o gestor.
+    flow:
+      - "Capturar erro + contexto (step, agente, cliente, task)"
+      - "Solucionador *diagnosticar '{erro}' --agente {agente} --cliente {cliente}"
+      - "Se auto-resolve: *fallback {strategy_id} → retornar ao step"
+      - "Se escalar: *alertar '{erro}' --severity {severity} → pausar fluxo"
+
+  strategies:
+    figma_image_fill:
+      description: "Fluxo padrão para posts com fotos (NÃO é fallback)"
+      flow: "Figma = layout/template → Pillow = composição de fotos → Drive = PNG final"
+      strategy_id: figma-image-fill-timeout
+
+    figma_inacessivel:
+      description: "Arquivo Figma inacessível"
+      strategy_id: figma-file-inacessivel
+
+    drive_upload:
+      description: "Upload para Drive falhou"
+      strategy_id: drive-upload-falhou
+
+    drive_pasta:
+      description: "Pasta não existe no Drive"
+      strategy_id: drive-pasta-nao-existe
+
+    clickup_rate_limit:
+      description: "ClickUp retornou 429"
+      strategy_id: clickup-rate-limit

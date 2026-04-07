@@ -31,14 +31,15 @@
 | Humberto Sales | {{humberto_concluido}} | {{humberto_andamento}} | {{humberto_atrasado}} | {{humberto_pendente}} | {{humberto_taxa}}% |
 | Max Ayalla | {{max_concluido}} | {{max_andamento}} | {{max_atrasado}} | {{max_pendente}} | {{max_taxa}}% |
 | Milena Araújo | {{milena_concluido}} | {{milena_andamento}} | {{milena_atrasado}} | {{milena_pendente}} | {{milena_taxa}}% |
-| Mateus Deckmann | {{mateus_d_concluido}} | {{mateus_d_andamento}} | {{mateus_d_atrasado}} | {{mateus_d_pendente}} | {{mateus_d_taxa}}% |
+| João Andare | {{joao_concluido}} | {{joao_andamento}} | {{joao_atrasado}} | {{joao_pendente}} | {{joao_taxa}}% |
+| Karyne Torres | {{karyne_concluido}} | {{karyne_andamento}} | {{karyne_atrasado}} | {{karyne_pendente}} | {{karyne_taxa}}% |
 
 ### 2.2 Editores de Vídeo
 
 | Editor | Concluído | Em andamento | Atrasado | Pendente | Taxa |
 |--------|-----------|--------------|----------|---------|------|
 | Ebertty Matnai | {{ebertty_concluido}} | {{ebertty_andamento}} | {{ebertty_atrasado}} | {{ebertty_pendente}} | {{ebertty_taxa}}% |
-| João Andare | {{joao_concluido}} | {{joao_andamento}} | {{joao_atrasado}} | {{joao_pendente}} | {{joao_taxa}}% |
+| Mateus Deckmann | {{mateus_d_concluido}} | {{mateus_d_andamento}} | {{mateus_d_atrasado}} | {{mateus_d_pendente}} | {{mateus_d_taxa}}% |
 | André Araújo | {{andre_concluido}} | {{andre_andamento}} | {{andre_atrasado}} | {{andre_pendente}} | {{andre_taxa}}% |
 
 **⭐ Destaque positivo:** {{melhor_membro}} — {{melhor_membro_taxa}}% de conclusão

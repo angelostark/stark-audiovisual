@@ -190,9 +190,10 @@ membros = [
   {id: "82154730",  nome: "Humberto Sales"},
   {id: "112104837", nome: "Max Ayalla"},
   {id: "106172497", nome: "Milena Araujo"},
-  {id: "248549658", nome: "Mateus Deckmann"},
-  {id: "188585120", nome: "Ebertty Matnai"},
   {id: "112104835", nome: "Joao Andare"},
+  {id: "106090854", nome: "Karyne Torres"},
+  {id: "188585120", nome: "Ebertty Matnai"},
+  {id: "248549658", nome: "Mateus Deckmann"},
   {id: "82029622",  nome: "Andre Araujo"}
 ]
 
@@ -302,13 +303,14 @@ Usar template de output abaixo.
 | Humberto Sales | N | N | N | N | N | N% |
 | Max Ayalla | N | N | N | N | N | N% |
 | Milena Araujo | N | N | N | N | N | N% |
-| Mateus Deckmann | N | N | N | N | N | N% |
+| Joao Andare | N | N | N | N | N | N% |
+| Karyne Torres | N | N | N | N | N | N% |
 
 ### Por Membro — Editores
 | Membro | Total | No prazo | Atrasado | Andamento | Pendente | % Entrega |
 |--------|-------|----------|----------|-----------|----------|-----------|
 | Ebertty Matnai | N | N | N | N | N | N% |
-| Joao Andare | N | N | N | N | N | N% |
+| Mateus Deckmann | N | N | N | N | N | N% |
 | Andre Araujo | N | N | N | N | N | N% |
 
 ### Por Membro — Coordenadores/Estrategistas

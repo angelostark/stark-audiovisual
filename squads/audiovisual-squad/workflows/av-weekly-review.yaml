@@ -36,7 +36,7 @@ phases:
           - Humberto Sales
           - Max Ayalla
           - Milena Araújo
-          - Mateus Deckmann
+          - João Andare
         auto: true
         output: designers_scorecard
         depends_on: [1.1]
@@ -46,7 +46,7 @@ phases:
         action: |
           Executar *por-membro para cada editor:
           - Ebertty Matnai
-          - João Andare
+          - Mateus Deckmann Redmann
           - André Araújo
         auto: true
         output: editors_scorecard
@@ -96,6 +96,18 @@ phases:
         elicit: false
         depends_on: [4.2]
 
+  - id: phase-5
+    name: "Metas Mensais (opcional)"
+    description: "Calcula e grava KPIs mensais — executar apenas próximo ao dia 19 ou sob demanda"
+    condition: "Executar apenas se solicitado explicitamente ou se estiver entre os dias 15-20 do mês"
+    steps:
+      - id: 5.1
+        name: "Calcular e gravar metas"
+        task: av-metas.md
+        auto: false
+        elicit: true
+        output: metas_report
+
 output:
   - status_report: "Visão geral de todas as entregas"
   - atrasados_report: "Lista de atrasados com responsáveis"
@@ -103,6 +115,7 @@ output:
   - editors_scorecard: "Performance individual de editores"
   - clientes_risco_report: "Clientes com produção em risco"
   - relatorio_final: "Link do PDF no Gamma"
+  - metas_report: "KPIs mensais gravados na planilha + DMs enviadas (fase opcional)"
 
 on_error:
   clickup_unavailable:

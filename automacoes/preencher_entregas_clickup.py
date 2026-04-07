@@ -10,6 +10,7 @@ Uso:
   python3 preencher_entregas_clickup.py
   python3 preencher_entregas_clickup.py --dry-run
   python3 preencher_entregas_clickup.py --semana "16/03 a 22/03" --quarta 2026-03-18
+  python3 preencher_entregas_clickup.py --input /tmp/entregas_calculadas.json
 """
 
 import json
@@ -179,6 +180,25 @@ def carregar_tarefas_json(config):
         filtradas[tid] = task
 
     print(f'Tarefas filtradas da semana: {len(filtradas)}')
+
+    # Enriquecer com date_done dos detalhes individuais (/tmp/clickup_detail_*.json)
+    detail_files = glob.glob('/tmp/clickup_detail_*.json')
+    if detail_files:
+        enriched = 0
+        for filepath in detail_files:
+            with open(filepath) as f:
+                try:
+                    detail = json.load(f)
+                except json.JSONDecodeError:
+                    continue
+            tid = detail.get('id')
+            if tid and tid in filtradas:
+                dd = detail.get('date_done') or detail.get('dateDone')
+                if dd:
+                    filtradas[tid]['date_done'] = dd
+                    enriched += 1
+        print(f'Tarefas enriquecidas com date_done: {enriched}')
+
     return filtradas
 
 
@@ -192,7 +212,7 @@ def salvar_dados_brutos(client, tarefas, semana_str):
     aba = ss.worksheet('Dados Brutos')
 
     # Limpar dados antigos (manter header)
-    aba.batch_clear(['A2:J'])
+    aba.batch_clear(['A2:K'])
 
     if not tarefas:
         print('Nenhuma tarefa para gravar nos dados brutos.')
@@ -208,6 +228,7 @@ def salvar_dados_brutos(client, tarefas, semana_str):
             status_str = str(status_raw)
 
         date_updated = task.get('dateUpdated', '') or task.get('date_updated', '')
+        date_done = task.get('date_done') or task.get('dateDone') or ''
 
         hierarchy = task.get('hierarchy', {})
         parent_task = hierarchy.get('task', {})
@@ -239,10 +260,11 @@ def salvar_dados_brutos(client, tarefas, semana_str):
                 parent_name,
                 str(list_id),
                 str(date_created),
+                str(date_done),
             ])
 
     if linhas:
-        aba.update(f'A2:J{len(linhas) + 1}', linhas)
+        aba.update(f'A2:K{len(linhas) + 1}', linhas)
         print(f'Dados brutos: {len(linhas)} linhas gravadas na aba "Dados Brutos".')
 
 
@@ -252,7 +274,7 @@ def atualizar_status(client, tasks_count, status='OK', error=''):
     try:
         aba = ss.worksheet('Status')
         now_str = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
-        aba.update('A2:D2', [[now_str, status, str(tasks_count), error]])
+        aba.update(range_name='A2:D2', values=[[now_str, status, str(tasks_count), error]])
     except Exception:
         pass  # Status é opcional
 
@@ -262,7 +284,11 @@ def atualizar_status(client, tasks_count, status='OK', error=''):
 # =====================================================================
 
 def calcular_entregas(tarefas, prazo_ms):
-    """Calcula demandas e entregas no prazo por colaborador."""
+    """Calcula demandas e entregas no prazo por colaborador.
+
+    Usa date_done (data de conclusão real) quando disponível.
+    Fallback para date_updated se date_done não existir.
+    """
     demandas = {name: 0 for name in TEAM.values()}
     entregues = {name: 0 for name in TEAM.values()}
 
@@ -275,18 +301,27 @@ def calcular_entregas(tarefas, prazo_ms):
 
         is_entregue = status_str in STATUS_ENTREGUE
 
-        date_updated_ms = None
-        du = task.get('dateUpdated') or task.get('date_updated')
-        if du:
+        # Prioridade: date_done > date_updated
+        done_ms = None
+        dd = task.get('date_done') or task.get('dateDone')
+        if dd:
             try:
-                date_updated_ms = int(du)
+                done_ms = int(dd)
             except (ValueError, TypeError):
                 pass
 
+        if done_ms is None:
+            du = task.get('dateUpdated') or task.get('date_updated')
+            if du:
+                try:
+                    done_ms = int(du)
+                except (ValueError, TypeError):
+                    pass
+
         entregue_no_prazo = False
         if is_entregue:
-            if date_updated_ms is not None:
-                entregue_no_prazo = date_updated_ms <= prazo_ms
+            if done_ms is not None:
+                entregue_no_prazo = done_ms <= prazo_ms
             else:
                 entregue_no_prazo = True
 
@@ -335,6 +370,75 @@ def _semana_match(cell_value, semana_str, segunda_date_str):
         except ValueError:
             pass
     return False
+
+
+def escrever_todas_semanas(client, semanas_data, mes_str):
+    """Atualiza a aba do mês com dados de entregas de TODAS as semanas de uma vez."""
+    ss = client.open_by_key(SHEET_ID)
+
+    abas = ss.worksheets()
+    aba = next((a for a in abas if normalizar(a.title) == normalizar(mes_str)), None)
+    if not aba:
+        print(f"Erro: Aba '{mes_str}' nao encontrada.")
+        sys.exit(1)
+
+    print(f"Aba '{aba.title}' acessada.")
+    dados = aba.get_all_values()
+
+    updates = []
+    membros_atualizados = set()
+
+    for semana in semanas_data:
+        segunda_date_str = semana.get('segunda', '')
+        semana_str = semana.get('semana_str', '')
+        membros = semana.get('membros', {})
+
+        for i, row in enumerate(dados):
+            # Secao Designers (colunas A-D)
+            col_semana, col_nome, col_serem, col_entregues = 0, 1, 2, 3
+            semana_linha = str(row[col_semana] if len(row) > col_semana else '').strip()
+            nome_linha = str(row[col_nome] if len(row) > col_nome else '').strip()
+
+            if _semana_match(semana_linha, semana_str, segunda_date_str):
+                primeiro_nome = match_nome(nome_linha)
+                if primeiro_nome and primeiro_nome not in EDITORES:
+                    info = membros.get(primeiro_nome, {})
+                    if info.get('total', 0) > 0:
+                        updates.append({
+                            'range': gspread.utils.rowcol_to_a1(i + 1, col_serem + 1),
+                            'values': [[info['total']]]
+                        })
+                        updates.append({
+                            'range': gspread.utils.rowcol_to_a1(i + 1, col_entregues + 1),
+                            'values': [[info['entregues']]]
+                        })
+                        membros_atualizados.add(primeiro_nome)
+
+            # Secao Editores (colunas G-J)
+            col_semana_ed, col_nome_ed, col_serem_ed, col_entregues_ed = 6, 7, 8, 9
+            semana_ed = str(row[col_semana_ed] if len(row) > col_semana_ed else '').strip()
+            nome_ed = str(row[col_nome_ed] if len(row) > col_nome_ed else '').strip()
+
+            if _semana_match(semana_ed, semana_str, segunda_date_str):
+                primeiro_nome_ed = match_nome(nome_ed)
+                if primeiro_nome_ed and primeiro_nome_ed in EDITORES:
+                    info = membros.get(primeiro_nome_ed, {})
+                    if info.get('total', 0) > 0:
+                        updates.append({
+                            'range': gspread.utils.rowcol_to_a1(i + 1, col_serem_ed + 1),
+                            'values': [[info['total']]]
+                        })
+                        updates.append({
+                            'range': gspread.utils.rowcol_to_a1(i + 1, col_entregues_ed + 1),
+                            'values': [[info['entregues']]]
+                        })
+                        membros_atualizados.add(primeiro_nome_ed)
+
+    if updates:
+        aba.batch_update(updates)
+        print(f"Sucesso! {len(updates)//2} celulas atualizadas ({len(membros_atualizados)} colaboradores).")
+    else:
+        print("Nenhuma linha encontrada para atualizar.")
 
 
 def escrever_entregas(client, demandas, entregues, semana_str, mes_str, segunda_date_str=None):
@@ -418,7 +522,59 @@ def main():
     parser.add_argument('--semana', help='Texto da semana (ex: "16/03 a 22/03")')
     parser.add_argument('--mes', help='Nome da aba do mes na planilha')
     parser.add_argument('--dry-run', action='store_true', help='Apenas calcula, sem escrever')
+    parser.add_argument('--input', help='JSON pre-calculado com entregas por membro/semana')
     args = parser.parse_args()
+
+    # ================================================================
+    # MODO INPUT PRE-CALCULADO (novo fluxo com filter_tasks + bulk_status)
+    # ================================================================
+    if args.input:
+        with open(args.input) as f:
+            input_data = json.load(f)
+
+        mes_str = input_data.get('mes', args.mes or MESES_PT[datetime.now().month - 1])
+
+        print(f"=== MODO INPUT PRE-CALCULADO ===")
+        print(f"Mes: {mes_str}")
+        print(f"Semanas: {len(input_data['semanas'])}")
+        print()
+
+        total_geral = 0
+        entregues_geral = 0
+
+        for semana in input_data['semanas']:
+            rng = semana.get('semana_str', semana.get('segunda', '?'))
+            print(f"--- Semana {rng} ---")
+            print(f"{'Colaborador':<20} {'Total':>5} {'Entregues':>10} {'%':>8}")
+
+            for nome, info in sorted(semana.get('membros', {}).items()):
+                total = info.get('total', 0)
+                entreg = info.get('entregues', 0)
+                pct = (entreg / total * 100) if total > 0 else 0
+                total_geral += total
+                entregues_geral += entreg
+                print(f"  {nome:<18} {total:>5} {entreg:>10} {pct:>7.1f}%")
+            print()
+
+        pct_geral = (entregues_geral / total_geral * 100) if total_geral > 0 else 0
+        print(f"TOTAL GERAL: {entregues_geral}/{total_geral} = {pct_geral:.1f}%")
+
+        if args.dry_run:
+            print("\n(Dry-Run) Nao escrevendo na planilha.")
+            sys.exit(0)
+
+        try:
+            creds = Credentials.from_service_account_file(CREDENTIALS_PATH, scopes=SCOPES)
+            client = gspread.authorize(creds)
+        except Exception as e:
+            print(f"Erro ao carregar credentials.json: {e}")
+            sys.exit(1)
+
+        print(f"\nEscrevendo na planilha (Mes: {mes_str})...")
+        escrever_todas_semanas(client, input_data['semanas'], mes_str)
+        atualizar_status(client, total_geral, 'OK')
+        print(f"\nPlanilha: https://docs.google.com/spreadsheets/d/{SHEET_ID}")
+        sys.exit(0)
 
     # Carregar config gerada pela skill
     config_path = '/tmp/entrega_config.json'

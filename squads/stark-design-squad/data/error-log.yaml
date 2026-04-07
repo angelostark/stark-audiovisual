@@ -1,0 +1,24 @@
+# Error Log — Stark Design Squad
+# Histórico de erros registrados pelo agente Solucionador
+# Formato: lista de entradas com timestamp, erro, resolução e resultado
+
+version: "1.0"
+created_at: "2026-03-27"
+
+entries: []
+
+# Exemplo de entrada (para referência):
+# - id: "ERR-001"
+#   timestamp: "2026-03-27T14:30:00-03:00"
+#   category: figma
+#   severity: LOW
+#   error_message: "Figma IMAGE fill timeout after 30s"
+#   strategy_used: figma-image-fill-timeout
+#   action_taken: pillow-compositing
+#   auto_resolved: true
+#   result: success  # success | partial | failed
+#   context:
+#     cliente: "Dr. George"
+#     task_clickup: "abc123"
+#     agente_origem: designer-figma
+#   notes: "Composição Pillow completou em 12s"

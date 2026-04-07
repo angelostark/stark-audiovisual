@@ -1,4 +1,4 @@
-ACTIVATION-NOTICE: This file contains your full agent operating guidelines. DO NOT load any external agent files as the complete configuration is in the YAML block below.
+111ACTIVATION-NOTICE: This file contains your full agent operating guidelines. DO NOT load any external agent files as the complete configuration is in the YAML block below.
 
 CRITICAL: Read the full YAML BLOCK that FOLLOWS IN THIS FILE to understand your operating params, start and follow exactly your activation-instructions to alter your state of being, stay in this being until told to exit this mode:
 
@@ -154,6 +154,14 @@ command_loader:
       - "data/av-team-config.yaml"
     output_format: "Tabela de % entrega por membro + resumo geral com total real de tarefas"
 
+  "*metas":
+    description: "Calcula KPIs mensais, grava na planilha de metas e envia DMs via ClickUp Chat"
+    requires:
+      - "tasks/av-metas.md"
+    optional:
+      - "data/av-team-config.yaml"
+    output_format: "KPIs por colaborador + confirmação de escrita + status de DMs enviadas"
+
 # All commands require * prefix
 commands:
   - name: status-semanal
@@ -187,6 +195,12 @@ commands:
     visibility: [full, quick, key]
     description: "Taxa de entrega no prazo (seg-qua 20h) — paginação completa de TODAS as tarefas"
     task: av-entrega-semanal.md
+
+  - name: metas
+    args: "[--mes N] [--ano N] [--mes-anterior] [--skip-chat]"
+    visibility: [full, quick, key]
+    description: "Calcula KPIs mensais, grava planilha de metas e envia DMs individuais"
+    task: av-metas.md
 
   - name: help
     visibility: [full, quick, key]
@@ -383,6 +397,13 @@ completion_criteria:
     - "Registrou total de páginas e tarefas coletadas no output"
     - "Calculou % de entrega por membro (designers + editores + coordenadores)"
     - "Identificou tarefas sem responsável"
+  metas:
+    - "Verificou pre-requisitos (Python, deps, credentials)"
+    - "Executou dry-run e exibiu resultados ao usuario"
+    - "Obteve confirmacao explicita antes de escrever"
+    - "Gravou KPIs na planilha de metas"
+    - "Enviou DMs via ClickUp Chat (se confirmado)"
+    - "Exibiu resumo final com status"
   gerar_relatorio:
     - "Executou todas as consultas: status geral + atrasados + por membro"
     - "Montou relatório com template relatorio-av-tmpl.md"
@@ -401,6 +422,8 @@ synergies:
     use: "Para calcular % de entrega no prazo (até quarta 20h)"
   - skill: "analisar-artes"
     use: "Para análise de qualidade das artes produzidas"
+  - script: "automacoes/metas_av.py"
+    use: "Cálculo de KPIs mensais, escrita na planilha e envio de DMs"
   - mcp: "clickup"
     use: "Fonte principal de dados — consulta em tempo real"
   - mcp: "gamma"
@@ -414,6 +437,7 @@ dependencies:
     - av-por-cliente.md
     - av-gerar-relatorio.md
     - av-entrega-semanal.md
+    - av-metas.md
   templates:
     - relatorio-av-tmpl.md
   checklists:
@@ -437,6 +461,7 @@ autoClaude:
 - `*por-membro {nome}` — Scorecard individual de um membro
 - `*por-cliente {nome}` — Status de produção de um cliente
 - `*entrega-semanal` — Taxa de entrega no prazo (seg-qua 20h) com paginação completa
+- `*metas` — Calcula KPIs mensais, grava planilha e envia DMs individuais
 - `*gerar-relatorio` — Relatório completo + exportação PDF via Gamma
 - `*help` — Ver todos os comandos
 - `*exit` — Sair do modo AV Monitor
@@ -448,6 +473,7 @@ autoClaude:
 - `/av-membro` — Equivalente a `*por-membro`
 - `/av-cliente` — Equivalente a `*por-cliente`
 - `/av-entrega` — Equivalente a `*entrega-semanal`
+- `/av-metas` — Equivalente a `*metas`
 - `/av-relatorio` — Equivalente a `*gerar-relatorio`
 
 ---

@@ -16,6 +16,7 @@ Squad para liderança e monitoramento da área Audiovisual da Stark.
 | `/av-atrasados` | Lista tudo que está atrasado ou em risco |
 | `/av-membro Eloy` | Scorecard individual de um membro da equipe |
 | `/av-cliente Cadu` | Status de produção de um cliente específico |
+| `/av-metas` | Calcula KPIs mensais, grava planilha e envia DMs |
 | `/av-relatorio` | Relatório completo + PDF via Gamma |
 
 ## Uso do Agente
@@ -27,6 +28,7 @@ Squad para liderança e monitoramento da área Audiovisual da Stark.
 *atrasados            # O que está atrasado
 *por-membro Eloy      # Scorecard do Eloy
 *por-cliente Cadu     # Status do Dr. Cadu
+*metas                # KPIs mensais + planilha + DMs
 *gerar-relatorio      # Relatório PDF completo
 ```
 
@@ -54,9 +56,9 @@ Isso executa automaticamente:
 
 ## Equipe Configurada
 
-**Designers:** Eloy Lopes, Humberto Sales, Max Ayalla, Milena Araújo, Mateus Deckmann
+**Designers:** Eloy Lopes, Humberto Sales, Max Ayalla, Milena Araújo, João Andare, Karyne Torres
 
-**Editores:** Ebertty Matnai, João Andare, André Araújo
+**Editores:** Ebertty Matnai, Mateus Deckmann Redmann, André Araújo
 
 **Estrategistas:** Matheus Peleteiro, Bruna Santana, Thaynara Castro, Evany Bandeira, Daniela Cabral, Germana Souza, Gabriella Andrade
 

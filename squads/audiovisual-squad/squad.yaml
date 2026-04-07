@@ -18,6 +18,8 @@ components:
     - av-por-membro.md
     - av-por-cliente.md
     - av-gerar-relatorio.md
+    - av-metas.md
+    - av-audit-metas.md
   workflows:
     - av-weekly-review.yaml
   checklists:

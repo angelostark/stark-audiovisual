@@ -1,0 +1,222 @@
+# Fallback Strategies — Stark Design Squad
+# Banco de erros conhecidos e estratégias de recuperação automática
+# Usado pelo agente Solucionador para auto-resolução
+
+version: "1.0"
+updated_at: "2026-03-27"
+
+strategies:
+  # === Figma ===
+  - id: figma-image-fill-timeout
+    category: figma
+    pattern: "IMAGE fill timeout|image fill failed|setImageFill"
+    severity: LOW
+    description: "Figma Plugin API não consegue aplicar IMAGE fills via MCP"
+    fallback:
+      type: auto
+      action: pillow-compositing
+      description: >
+        Fluxo padrão: Figma = layout/template (textos, shapes, cores) com placeholders.
+        Pillow = composição das fotos fora do Figma.
+        Drive = PNG final com layout + fotos.
+      steps:
+        - "Exportar frame do Figma como PNG (sem fotos)"
+        - "Usar Pillow para compor fotos nos placeholders"
+        - "Salvar PNG final e fazer upload para Drive"
+      confidence: 0.95
+
+  - id: figma-file-inacessivel
+    category: figma
+    pattern: "file not found|access denied|403.*figma|figma.*forbidden"
+    severity: HIGH
+    description: "Arquivo do Figma inacessível (permissão ou link inválido)"
+    fallback:
+      type: manual
+      action: pedir-link-gestor
+      description: "Solicitar link correto ao gestor via ClickUp Chat"
+      steps:
+        - "Alertar gestor no ClickUp Chat com @menção"
+        - "Incluir file key tentado e erro recebido"
+        - "Aguardar novo link"
+      confidence: 0.0
+
+  - id: figma-mcp-timeout
+    category: figma
+    pattern: "timeout.*figma|figma.*timeout|MCP.*timeout.*figma"
+    severity: MEDIUM
+    description: "MCP do Figma deu timeout na operação"
+    fallback:
+      type: auto
+      action: retry-com-backoff
+      description: "Retry com backoff exponencial (máx 3 tentativas)"
+      steps:
+        - "Aguardar 5 segundos"
+        - "Retry operação (tentativa 2/3)"
+        - "Se falhar: aguardar 15 segundos e tentar última vez"
+        - "Se falhar 3x: escalar para gestor"
+      confidence: 0.7
+      max_retries: 3
+
+  # === Google Drive ===
+  - id: drive-upload-falhou
+    category: drive
+    pattern: "upload failed|drive.*error|HttpError.*drive|upload_drive.*error"
+    severity: HIGH
+    description: "Upload para Google Drive falhou"
+    fallback:
+      type: manual
+      action: mostrar-path-manual
+      description: "Mostrar path local do arquivo para upload manual"
+      steps:
+        - "Informar caminho local do arquivo exportado"
+        - "Indicar pasta destino esperada no Drive"
+        - "Alertar gestor no ClickUp Chat"
+      confidence: 0.0
+
+  - id: drive-pasta-nao-existe
+    category: drive
+    pattern: "folder not found|pasta.*não.*encontr|FileNotFoundError.*drive|404.*drive"
+    severity: LOW
+    description: "Pasta do cliente não existe no Drive"
+    fallback:
+      type: auto
+      action: criar-pasta-retry
+      description: "Criar pasta no Drive e retentar upload"
+      steps:
+        - "Criar pasta com nome do cliente no Drive"
+        - "Criar subpasta 'entregas' se necessário"
+        - "Retentar upload original"
+      confidence: 0.85
+
+  - id: drive-credentials-invalidas
+    category: drive
+    pattern: "credentials.*invalid|token.*expired|401.*google|RefreshError"
+    severity: CRITICAL
+    description: "Credenciais do Google Drive inválidas ou expiradas"
+    fallback:
+      type: manual
+      action: alertar-credenciais
+      description: "Alertar gestor sobre credenciais expiradas"
+      steps:
+        - "Alertar gestor no ClickUp Chat"
+        - "Informar que credentials.json precisa ser renovado"
+        - "Bloquear operações de Drive até resolução"
+      confidence: 0.0
+
+  # === ClickUp ===
+  - id: clickup-rate-limit
+    category: clickup
+    pattern: "429|rate limit|too many requests|Rate limit exceeded"
+    severity: LOW
+    description: "ClickUp retornou 429 (rate limit)"
+    fallback:
+      type: auto
+      action: retry-backoff-clickup
+      description: "Retry com backoff exponencial"
+      steps:
+        - "Aguardar 30 segundos"
+        - "Retry operação"
+        - "Se 429 novamente: aguardar 60 segundos"
+        - "Máximo 3 tentativas"
+      confidence: 0.9
+      max_retries: 3
+
+  - id: clickup-task-nao-encontrada
+    category: clickup
+    pattern: "task not found|task.*não.*encontr|404.*clickup"
+    severity: MEDIUM
+    description: "Task do ClickUp não encontrada pelo ID"
+    fallback:
+      type: auto
+      action: buscar-por-nome
+      description: "Buscar task pelo nome ao invés de ID"
+      steps:
+        - "Extrair nome/título da task do contexto"
+        - "Usar clickup_search com o nome"
+        - "Se encontrar: usar novo ID e continuar"
+        - "Se não encontrar: alertar gestor"
+      confidence: 0.75
+
+  - id: clickup-mcp-indisponivel
+    category: clickup
+    pattern: "MCP.*clickup.*unavailable|clickup.*connection.*refused"
+    severity: HIGH
+    description: "MCP do ClickUp indisponível"
+    fallback:
+      type: manual
+      action: alertar-mcp-down
+      description: "Alertar que o MCP do ClickUp está fora"
+      steps:
+        - "Registrar erro no log"
+        - "Continuar fluxo sem ClickUp (se possível)"
+        - "Alertar gestor para verificar MCP"
+      confidence: 0.0
+
+  # === Sistema Local ===
+  - id: path-nao-existe
+    category: sistema
+    pattern: "No such file or directory|FileNotFoundError|path.*not.*exist"
+    severity: LOW
+    description: "Diretório local não existe"
+    fallback:
+      type: auto
+      action: mkdir-retry
+      description: "Criar diretório e retentar operação"
+      steps:
+        - "Criar diretório com mkdir -p"
+        - "Retentar operação original"
+      confidence: 0.95
+
+  - id: python-modulo-faltante
+    category: sistema
+    pattern: "ModuleNotFoundError|No module named|ImportError"
+    severity: MEDIUM
+    description: "Módulo Python não instalado"
+    fallback:
+      type: manual
+      action: alertar-pip-install
+      description: "Alertar com comando pip install necessário"
+      steps:
+        - "Identificar módulo faltante do erro"
+        - "Sugerir: pip install [módulo]"
+        - "Alertar gestor se for dependência crítica"
+      confidence: 0.0
+
+  - id: permissao-negada
+    category: sistema
+    pattern: "Permission denied|EACCES|PermissionError"
+    severity: HIGH
+    description: "Permissão negada para operação no sistema"
+    fallback:
+      type: manual
+      action: alertar-permissao
+      description: "Alertar gestor sobre problema de permissão"
+      steps:
+        - "Identificar arquivo/diretório com problema"
+        - "Sugerir chmod/chown apropriado"
+        - "Alertar gestor no ClickUp Chat"
+      confidence: 0.0
+
+  # === Pillow / Processamento de Imagem ===
+  - id: pillow-imagem-corrompida
+    category: imagem
+    pattern: "cannot identify image|UnidentifiedImageError|image file is truncated"
+    severity: MEDIUM
+    description: "Imagem corrompida ou formato não suportado"
+    fallback:
+      type: manual
+      action: pedir-nova-imagem
+      description: "Solicitar nova imagem ao gestor"
+      steps:
+        - "Identificar imagem problemática"
+        - "Alertar gestor com nome do arquivo"
+        - "Pedir reenvio em PNG ou JPG"
+      confidence: 0.0
+
+# Regras de auto-resolução
+auto_resolve_rules:
+  max_auto_retries: 3
+  min_confidence: 0.7
+  severity_auto_allowed: [LOW, MEDIUM]
+  severity_requires_human: [HIGH, CRITICAL]
+  cooldown_between_retries_seconds: 5

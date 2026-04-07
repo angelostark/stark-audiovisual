@@ -11,6 +11,20 @@ LOG_FILE="${LOG_DIR}/metas_${TIMESTAMP}.log"
 
 mkdir -p "$LOG_DIR"
 
+# Carregar variáveis de ambiente (.env na raiz do projeto)
+ENV_FILE="$(dirname "$SCRIPT_DIR")/.env"
+if [ -f "$ENV_FILE" ]; then
+    # Exporta apenas linhas com KEY=VALUE (ignora comentários e vazias)
+    set -a
+    while IFS='=' read -r key value; do
+        case "$key" in
+            \#*|'') continue ;;
+            *) [ -n "$value" ] && export "$key=$value" ;;
+        esac
+    done < "$ENV_FILE"
+    set +a
+fi
+
 echo "=== Metas AV — Execução automática ===" >> "$LOG_FILE"
 echo "Início: $(date)" >> "$LOG_FILE"
 echo "" >> "$LOG_FILE"
